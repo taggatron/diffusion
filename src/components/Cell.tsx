@@ -264,34 +264,36 @@ export function Cell(props: { radius: number; gradient: number; temperatureC: nu
 
   return (
     <group ref={groupRef}>
-      <mesh>
+      <mesh renderOrder={1}>
         <sphereGeometry args={[radius, 64, 64]} />
         <meshStandardMaterial
           color={membraneColor}
           transparent
           opacity={0.25}
+          depthWrite={false}
           roughness={0.25}
           metalness={0.05}
         />
       </mesh>
 
-      <mesh>
+      <mesh renderOrder={1}>
         <sphereGeometry args={[radius * 1.02, 64, 64]} />
         <meshStandardMaterial
           color={glowColor}
           transparent
           opacity={0.08}
+          depthWrite={false}
           roughness={0.0}
           metalness={0.0}
         />
       </mesh>
 
-      <instancedMesh ref={burstMeshRef} args={[undefined as any, undefined as any, 80]}>
+      <instancedMesh ref={burstMeshRef} args={[undefined as any, undefined as any, 80]} renderOrder={2}>
         <planeGeometry args={[1, 1, 1, 1]} />
         <primitive object={burstMaterial} attach="material" />
       </instancedMesh>
 
-      <points geometry={particleGeometry} material={particleMaterial} />
+      <points geometry={particleGeometry} material={particleMaterial} renderOrder={3} />
     </group>
   )
 }
