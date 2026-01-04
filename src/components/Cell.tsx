@@ -7,6 +7,9 @@ export function Cell(props: { radius: number; gradient: number; temperatureC: nu
   const groupRef = useRef<THREE.Group>(null)
   const burstMeshRef = useRef<THREE.InstancedMesh>(null)
 
+  const MAX_PARTICLES = 1400
+  const MIN_ACTIVE_PARTICLES = 450
+
   const particleGeometry = useMemo(() => new THREE.BufferGeometry(), [])
   const particleMaterial = useMemo(
     () =>
@@ -15,7 +18,7 @@ export function Cell(props: { radius: number; gradient: number; temperatureC: nu
         sizeAttenuation: true,
         transparent: true,
         opacity: 1.0,
-        color: new THREE.Color('#22c55e'),
+        vertexColors: true,
         depthWrite: false,
       }),
     [],
@@ -51,11 +54,14 @@ export function Cell(props: { radius: number; gradient: number; temperatureC: nu
   const up = useMemo(() => new THREE.Vector3(0, 0, 1), [])
   const enterColor = useMemo(() => new THREE.Color('#34d399'), [])
   const exitColor = useMemo(() => new THREE.Color('#a7f3d0'), [])
+  const insideParticleColor = useMemo(() => new THREE.Color('#ef4444'), [])
+  const outsideParticleColor = useMemo(() => new THREE.Color('#22c55e'), [])
 
-  const { positions, velocities } = useMemo(() => {
-    const count = 700
+  const { positions, velocities, colors } = useMemo(() => {
+    const count = MAX_PARTICLES
     const positions = new Float32Array(count * 3)
     const velocities = new Float32Array(count * 3)
+    const colors = new Float32Array(count * 3)
 
     const rand = () => (Math.random() * 2 - 1)
     for (let i = 0; i < count; i++) {
@@ -71,9 +77,15 @@ export function Cell(props: { radius: number; gradient: number; temperatureC: nu
       velocities[i * 3 + 0] = rand() * 0.02
       velocities[i * 3 + 1] = rand() * 0.02
       velocities[i * 3 + 2] = rand() * 0.02
+
+      // Initial color by location (inside red, outside green)
+      const c = inside ? insideParticleColor : outsideParticleColor
+      colors[i * 3 + 0] = c.r
+      colors[i * 3 + 1] = c.g
+      colors[i * 3 + 2] = c.b
     }
-    return { positions, velocities }
-  }, [radius])
+    return { positions, velocities, colors }
+  }, [radius, insideParticleColor, outsideParticleColor])
 
   useMemo(() => {
     prevOutsideRef.current = new Uint8Array(positions.length / 3)
@@ -86,6 +98,8 @@ export function Cell(props: { radius: number; gradient: number; temperatureC: nu
 
   useMemo(() => {
     particleGeometry.setAttribute('position', new THREE.BufferAttribute(positions, 3))
+    particleGeometry.setAttribute('color', new THREE.BufferAttribute(colors, 3))
+    particleGeometry.setDrawRange(0, MAX_PARTICLES)
   }, [particleGeometry, positions])
 
   useFrame((_, delta) => {
@@ -94,6 +108,7 @@ export function Cell(props: { radius: number; gradient: number; temperatureC: nu
     groupRef.current.rotation.y += delta * 0.02
 
     const posAttr = particleGeometry.getAttribute('position') as THREE.BufferAttribute
+    const colorAttr = particleGeometry.getAttribute('color') as THREE.BufferAttribute
 
     // Temperature increases random motion speed (diffusion coefficient).
     const tempNorm = THREE.MathUtils.clamp((temperatureC - 0) / 60, 0, 1)
@@ -107,15 +122,23 @@ export function Cell(props: { radius: number; gradient: number; temperatureC: nu
     const pEnter = 1 - Math.exp(-kEnter * delta)
     const pExit = 1 - Math.exp(-kExit * delta)
 
-    // Random walk acceleration (scaled by temperature).
-    const accel = 0.38 * speedFactor
-    const damping = Math.pow(0.72, delta)
+    // Random walk acceleration + displacement scale (scaled by temperature).
+    // Keep it visually obvious: higher temperature => noticeably faster motion.
+    const accel = 1.4 * speedFactor
+    const moveScale = 1.25 * speedFactor
+    const damping = Math.pow(0.78, delta)
 
     const prevOutside = prevOutsideRef.current
     const bursts = burstsRef.current
     const membraneR = radius
 
-    for (let i = 0; i < posAttr.count; i++) {
+    // More gradient => more particles (simple visualization of higher ΔC)
+    const activeCount = Math.floor(
+      THREE.MathUtils.lerp(MIN_ACTIVE_PARTICLES, MAX_PARTICLES, THREE.MathUtils.clamp(gradient, 0, 1)),
+    )
+    particleGeometry.setDrawRange(0, activeCount)
+
+    for (let i = 0; i < activeCount; i++) {
       const ix = i * 3
       const x = positions[ix + 0]
       const y = positions[ix + 1]
@@ -131,8 +154,8 @@ export function Cell(props: { radius: number; gradient: number; temperatureC: nu
       tmpV3.z += (Math.random() * 2 - 1) * accel * delta
       tmpV3.multiplyScalar(damping)
 
-      // Integrate position
-      tmpV3b.add(tmpV3.clone().multiplyScalar(delta))
+      // Integrate position (scaled so temperature slider visibly changes speed)
+      tmpV3b.add(tmpV3.clone().multiplyScalar(delta * moveScale))
       const dist1 = tmpV3b.length()
 
       // Probabilistic permeation at the membrane: if a step crosses, either allow or reflect.
@@ -171,6 +194,13 @@ export function Cell(props: { radius: number; gradient: number; temperatureC: nu
         }
       }
 
+      // Color by location (inside red, outside green)
+      const isInside = dist < membraneR
+      const c = isInside ? insideParticleColor : outsideParticleColor
+      colors[ix + 0] = c.r
+      colors[ix + 1] = c.g
+      colors[ix + 2] = c.b
+
       // Keep particles within a larger bounds sphere (allow inside the cell, too).
       const minR = radius * 0.15
       const maxR = radius * 2.6
@@ -187,6 +217,7 @@ export function Cell(props: { radius: number; gradient: number; temperatureC: nu
     }
 
     posAttr.needsUpdate = true
+    colorAttr.needsUpdate = true
 
     // Age + render bursts (instanced quads oriented to membrane normal).
     const burstMesh = burstMeshRef.current
