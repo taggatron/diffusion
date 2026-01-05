@@ -6,6 +6,7 @@ function App() {
   const [radiusUm, setRadiusUm] = useState(12)
   const [deltaC, setDeltaC] = useState(0.6)
   const [temperatureC, setTemperatureC] = useState(25)
+  const [particleCounts, setParticleCounts] = useState({ red: 0, green: 0 })
 
   const inputs: DiffusionInputs = useMemo(
     () => ({ radiusUm, deltaC, temperatureC }),
@@ -41,8 +42,24 @@ function App() {
               <div className="tabular-nums">Temp factor ≈ {outputs.temperatureFactor.toFixed(2)}×</div>
             </div>
           </div>
-          <div className="h-[420px] md:h-[520px]">
-            <CellScene radiusUm={radiusUm} gradient={deltaC} temperatureC={temperatureC} />
+          <div className="relative h-[420px] md:h-[520px]">
+            <CellScene
+              radiusUm={radiusUm}
+              gradient={deltaC}
+              temperatureC={temperatureC}
+              onCounts={setParticleCounts}
+            />
+
+            <div className="pointer-events-none absolute bottom-3 left-3 rounded-lg bg-white/70 px-3 py-2 text-xs shadow-sm ring-1 ring-slate-200">
+              <div className="flex items-center justify-between gap-4">
+                <div className="text-red-500">Red</div>
+                <div className="font-medium tabular-nums text-red-500">{particleCounts.red}</div>
+              </div>
+              <div className="mt-1 flex items-center justify-between gap-4">
+                <div className="text-green-500">Green</div>
+                <div className="font-medium tabular-nums text-green-500">{particleCounts.green}</div>
+              </div>
+            </div>
           </div>
         </section>
 
