@@ -7,8 +7,9 @@ export function Cell(props: {
   gradient: number
   temperatureC: number
   onCounts: (counts: { red: number; green: number }) => void
+  onFlux?: (flux: { inRate: number; outRate: number }) => void
 }) {
-  const { radius, gradient, temperatureC, onCounts } = props
+  const { radius, gradient, temperatureC, onCounts, onFlux } = props
   const groupRef = useRef<THREE.Group>(null)
   const burstMeshRef = useRef<THREE.InstancedMesh>(null)
 
@@ -52,6 +53,8 @@ export function Cell(props: {
   const burstsRef = useRef<Burst[]>([])
   const prevOutsideRef = useRef<Uint8Array | null>(null)
   const countsElapsedRef = useRef(0)
+  const fluxElapsedRef = useRef(0)
+  const fluxCountsRef = useRef({ enter: 0, exit: 0 })
   const tmpV3 = useMemo(() => new THREE.Vector3(), [])
   const tmpV3b = useMemo(() => new THREE.Vector3(), [])
   const tmpQuat = useMemo(() => new THREE.Quaternion(), [])
@@ -246,6 +249,10 @@ export function Cell(props: {
             age: 0,
             kind: isOutside ? 'exit' : 'enter',
           })
+
+          if (isOutside) fluxCountsRef.current.exit += 1
+          else fluxCountsRef.current.enter += 1
+
           prevOutside[i] = isOutside
         }
       }
@@ -276,6 +283,22 @@ export function Cell(props: {
         if (species[i] === 0) red++
       }
       onCounts({ red, green: activeCount - red })
+    }
+
+    // Emit diffusion in/out rates once per second (based on membrane crossing events).
+    if (onFlux) {
+      fluxElapsedRef.current += delta
+      if (fluxElapsedRef.current >= 1) {
+        const elapsed = fluxElapsedRef.current
+        fluxElapsedRef.current = 0
+
+        const enter = fluxCountsRef.current.enter
+        const exit = fluxCountsRef.current.exit
+        fluxCountsRef.current.enter = 0
+        fluxCountsRef.current.exit = 0
+
+        onFlux({ inRate: enter / elapsed, outRate: exit / elapsed })
+      }
     }
 
     // Age + render bursts (instanced quads oriented to membrane normal).
