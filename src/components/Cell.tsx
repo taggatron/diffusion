@@ -180,10 +180,13 @@ export function Cell(props: {
     const bursts = burstsRef.current
     const membraneR = radius
 
-
     // Temperature increases random motion speed (diffusion coefficient).
     const tempNorm = THREE.MathUtils.clamp((temperatureC - 0) / 60, 0, 1)
     const speedFactor = 0.6 + tempNorm * 1.8
+
+    // Larger cells should equilibrate more slowly relative to their size.
+    // Baseline scene radius is ~1 (radiusUm=12).
+    const radiusFactor = 1 / Math.max(0.35, membraneR)
 
     // Almost completely permeable membrane: crossings are nearly always allowed.
     // Gradient only slightly biases net flow.
@@ -192,9 +195,9 @@ export function Cell(props: {
     const pEnter = THREE.MathUtils.clamp(basePerm - bias + 2 * bias * gradient, 0, 1)
     const pExit = THREE.MathUtils.clamp(basePerm + bias - 2 * bias * gradient, 0, 1)
 
-    // Random walk acceleration + displacement scale (scaled by temperature).
-    const accel = 1.4 * speedFactor
-    const moveScale = 1.25 * speedFactor
+    // Random walk acceleration + displacement scale (scaled by temperature and radius).
+    const accel = 1.4 * speedFactor * radiusFactor
+    const moveScale = 1.25 * speedFactor * radiusFactor
     const damping = Math.pow(0.78, delta)
 
     for (let i = 0; i < activeCount; i++) {

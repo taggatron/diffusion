@@ -24,7 +24,9 @@ export function computeDiffusionRate(inputs: DiffusionInputs) {
   // Using a simple Q10-like rule: rate doubles per 10°C (rough heuristic).
   const temperatureFactor = Math.pow(2, (temperatureC - 25) / 10)
 
-  const rawRate = (surfaceArea / thicknessUm) * deltaC * temperatureFactor
+  // For a concentration change *rate*, SA:V matters: bigger cells equilibrate slower.
+  // Use SA:V rather than absolute surface area so increasing radius reduces the rate.
+  const rawRate = (saToV / thicknessUm) * deltaC * temperatureFactor
 
   // Normalize to a baseline at radius=12µm, deltaC=0.6, temp=25°C.
   const baseline = {
@@ -33,8 +35,10 @@ export function computeDiffusionRate(inputs: DiffusionInputs) {
     temperatureC: 25,
   }
   const baselineSurfaceArea = 4 * Math.PI * baseline.radiusUm * baseline.radiusUm
+  const baselineVolume = (4 / 3) * Math.PI * Math.pow(baseline.radiusUm, 3)
+  const baselineSaToV = baselineSurfaceArea / baselineVolume
   const baselineTempFactor = 1
-  const baselineRate = (baselineSurfaceArea / thicknessUm) * baseline.deltaC * baselineTempFactor
+  const baselineRate = (baselineSaToV / thicknessUm) * baseline.deltaC * baselineTempFactor
 
   const relativeRate = rawRate / baselineRate
 
