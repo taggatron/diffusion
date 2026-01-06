@@ -64,7 +64,7 @@ export function CellScene(props: {
   radiusUm: number
   gradient: number
   temperatureC: number
-  onCounts: (counts: { red: number; green: number }) => void
+  onCounts: (counts: { red: number; green: number; inside: number; outside: number }) => void
 }) {
   const { radiusUm, gradient, temperatureC, onCounts } = props
 

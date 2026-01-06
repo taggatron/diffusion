@@ -6,7 +6,7 @@ export function Cell(props: {
   radius: number
   gradient: number
   temperatureC: number
-  onCounts: (counts: { red: number; green: number }) => void
+  onCounts: (counts: { red: number; green: number; inside: number; outside: number }) => void
   onFlux?: (flux: { inRate: number; outRate: number }) => void
 }) {
   const { radius, gradient, temperatureC, onCounts, onFlux } = props
@@ -282,10 +282,15 @@ export function Cell(props: {
     if (countsElapsedRef.current >= 1) {
       countsElapsedRef.current = 0
       let red = 0
+      let inside = 0
       for (let i = 0; i < activeCount; i++) {
         if (species[i] === 0) red++
+
+        const ix = i * 3
+        const dist = Math.hypot(positions[ix + 0], positions[ix + 1], positions[ix + 2])
+        if (dist < membraneR) inside++
       }
-      onCounts({ red, green: activeCount - red })
+      onCounts({ red, green: activeCount - red, inside, outside: activeCount - inside })
     }
 
     // Emit diffusion in/out rates once per second (based on membrane crossing events).

@@ -6,7 +6,7 @@ function App() {
   const [radiusUm, setRadiusUm] = useState(12)
   const [deltaC, setDeltaC] = useState(0.6)
   const [temperatureC, setTemperatureC] = useState(25)
-  const [particleCounts, setParticleCounts] = useState({ red: 0, green: 0 })
+  const [particleCounts, setParticleCounts] = useState({ red: 0, green: 0, inside: 0, outside: 0 })
 
   const inputs: DiffusionInputs = useMemo(
     () => ({ radiusUm, deltaC, temperatureC }),
@@ -58,6 +58,17 @@ function App() {
               <div className="mt-1 flex items-center justify-between gap-4">
                 <div className="text-green-500">Green</div>
                 <div className="font-medium tabular-nums text-green-500">{particleCounts.green}</div>
+              </div>
+
+              <div className="mt-2 h-px bg-slate-200" />
+
+              <div className="mt-2 flex items-center justify-between gap-4">
+                <div className="text-slate-600">Inside total</div>
+                <div className="font-medium tabular-nums text-slate-700">{particleCounts.inside}</div>
+              </div>
+              <div className="mt-1 flex items-center justify-between gap-4">
+                <div className="text-slate-600">Outside total</div>
+                <div className="font-medium tabular-nums text-slate-700">{particleCounts.outside}</div>
               </div>
             </div>
           </div>
