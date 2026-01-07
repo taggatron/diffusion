@@ -212,10 +212,10 @@ export function Cell(props: {
     // Baseline scene radius is ~1 (radiusUm=12).
     const radiusFactor = 1 / Math.max(0.35, membraneR)
 
-    // Almost completely permeable membrane: crossings are nearly always allowed.
-    // Gradient only slightly biases net flow.
-    const basePerm = 0.985
-    const bias = 0.015
+    // Highly permeable (bidirectional) membrane: particles that exit can re-enter
+    // purely via random walk. Keep a small gradient bias so net flow still shifts.
+    const basePerm = 0.997
+    const bias = 0.003
     const pEnter = THREE.MathUtils.clamp(basePerm - bias + 2 * bias * gradient, 0, 1)
     const pExit = THREE.MathUtils.clamp(basePerm + bias - 2 * bias * gradient, 0, 1)
 
