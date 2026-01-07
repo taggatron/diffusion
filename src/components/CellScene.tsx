@@ -64,9 +64,10 @@ export function CellScene(props: {
   radiusUm: number
   gradient: number
   temperatureC: number
-  onCounts: (counts: { red: number; green: number; inside: number; outside: number }) => void
+  colorByLocation: boolean
+  onCounts: (counts: { red: number; green: number; inside: number; outside: number; exited: number }) => void
 }) {
-  const { radiusUm, gradient, temperatureC, onCounts } = props
+  const { radiusUm, gradient, temperatureC, colorByLocation, onCounts } = props
 
   // Keep the model visually stable (not physically accurate): map µm radius to scene units.
   const radius = useMemo(() => THREE.MathUtils.clamp(radiusUm / 12, 0.35, 2.2), [radiusUm])
@@ -83,6 +84,7 @@ export function CellScene(props: {
         radius={radius}
         gradient={gradient}
         temperatureC={temperatureC}
+        colorByLocation={colorByLocation}
         onCounts={onCounts}
         onFlux={setFlux}
       />

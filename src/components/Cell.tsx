@@ -6,10 +6,11 @@ export function Cell(props: {
   radius: number
   gradient: number
   temperatureC: number
-  onCounts: (counts: { red: number; green: number; inside: number; outside: number }) => void
+  colorByLocation: boolean
+  onCounts: (counts: { red: number; green: number; inside: number; outside: number; exited: number }) => void
   onFlux?: (flux: { inRate: number; outRate: number }) => void
 }) {
-  const { radius, gradient, temperatureC, onCounts, onFlux } = props
+  const { radius, gradient, temperatureC, colorByLocation, onCounts, onFlux } = props
   const groupRef = useRef<THREE.Group>(null)
   const burstMeshRef = useRef<THREE.InstancedMesh>(null)
 
@@ -55,6 +56,7 @@ export function Cell(props: {
   const countsElapsedRef = useRef(0)
   const fluxElapsedRef = useRef(0)
   const fluxCountsRef = useRef({ enter: 0, exit: 0 })
+  const exitedTotalRef = useRef(0)
   const tmpV3 = useMemo(() => new THREE.Vector3(), [])
   const tmpV3b = useMemo(() => new THREE.Vector3(), [])
   const tmpQuat = useMemo(() => new THREE.Quaternion(), [])
@@ -122,6 +124,8 @@ export function Cell(props: {
     const insideTargetFrac = THREE.MathUtils.clamp(0.1 + 0.8 * gradient, 0.05, 0.95)
     const insideTarget = Math.round(activeCount * insideTargetFrac)
 
+    exitedTotalRef.current = 0
+
     const rand = () => (Math.random() * 2 - 1)
     for (let i = 0; i < MAX_PARTICLES; i++) {
       const ix = i * 3
@@ -169,12 +173,32 @@ export function Cell(props: {
     ;(particleGeometry.getAttribute('color') as THREE.BufferAttribute).needsUpdate = true
   }, [activeCount, gradient, particleGeometry, positions, colors, radius, insideParticleColor, outsideParticleColor])
 
+  // If the user toggles color mode, recolor all active particles to match.
+  useEffect(() => {
+    const colorAttr = particleGeometry.getAttribute('color') as THREE.BufferAttribute
+    for (let i = 0; i < activeCount; i++) {
+      const ix = i * 3
+      let c: THREE.Color
+      if (colorByLocation) {
+        const dist = Math.hypot(positions[ix + 0], positions[ix + 1], positions[ix + 2])
+        c = dist < radius ? insideParticleColor : outsideParticleColor
+      } else {
+        c = species[i] === 0 ? insideParticleColor : outsideParticleColor
+      }
+      colors[ix + 0] = c.r
+      colors[ix + 1] = c.g
+      colors[ix + 2] = c.b
+    }
+    colorAttr.needsUpdate = true
+  }, [activeCount, colorByLocation, colors, insideParticleColor, outsideParticleColor, particleGeometry, positions, radius, species])
+
   useFrame((_, delta) => {
     if (!groupRef.current) return
     // Keep the cell mostly stable to avoid perceived motion patterns.
     groupRef.current.rotation.y += delta * 0.02
 
     const posAttr = particleGeometry.getAttribute('position') as THREE.BufferAttribute
+    const colorAttr = particleGeometry.getAttribute('color') as THREE.BufferAttribute
 
     const prevOutside = prevOutsideRef.current
     const bursts = burstsRef.current
@@ -256,6 +280,17 @@ export function Cell(props: {
           if (isOutside) fluxCountsRef.current.exit += 1
           else fluxCountsRef.current.enter += 1
 
+          if (wasOutside === 0 && isOutside === 1) exitedTotalRef.current += 1
+
+          if (colorByLocation) {
+            const ix = i * 3
+            const c = isOutside ? outsideParticleColor : insideParticleColor
+            colors[ix + 0] = c.r
+            colors[ix + 1] = c.g
+            colors[ix + 2] = c.b
+            colorAttr.needsUpdate = true
+          }
+
           prevOutside[i] = isOutside
         }
       }
@@ -290,7 +325,27 @@ export function Cell(props: {
         const dist = Math.hypot(positions[ix + 0], positions[ix + 1], positions[ix + 2])
         if (dist < membraneR) inside++
       }
-      onCounts({ red, green: activeCount - red, inside, outside: activeCount - inside })
+      onCounts({
+        red,
+        green: activeCount - red,
+        inside,
+        outside: activeCount - inside,
+        exited: exitedTotalRef.current,
+      })
+
+      // Keep colors consistent in location mode even if the particle crosses without triggering
+      // (e.g., due to fast slider changes).
+      if (colorByLocation) {
+        for (let i = 0; i < activeCount; i++) {
+          const ix = i * 3
+          const dist = Math.hypot(positions[ix + 0], positions[ix + 1], positions[ix + 2])
+          const c = dist < membraneR ? insideParticleColor : outsideParticleColor
+          colors[ix + 0] = c.r
+          colors[ix + 1] = c.g
+          colors[ix + 2] = c.b
+        }
+        colorAttr.needsUpdate = true
+      }
     }
 
     // Emit diffusion in/out rates once per second (based on membrane crossing events).

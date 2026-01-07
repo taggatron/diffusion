@@ -6,7 +6,8 @@ function App() {
   const [radiusUm, setRadiusUm] = useState(12)
   const [deltaC, setDeltaC] = useState(0.6)
   const [temperatureC, setTemperatureC] = useState(25)
-  const [particleCounts, setParticleCounts] = useState({ red: 0, green: 0, inside: 0, outside: 0 })
+  const [colorByLocation, setColorByLocation] = useState(false)
+  const [particleCounts, setParticleCounts] = useState({ red: 0, green: 0, inside: 0, outside: 0, exited: 0 })
 
   const inputs: DiffusionInputs = useMemo(
     () => ({ radiusUm, deltaC, temperatureC }),
@@ -47,29 +48,38 @@ function App() {
               radiusUm={radiusUm}
               gradient={deltaC}
               temperatureC={temperatureC}
+              colorByLocation={colorByLocation}
               onCounts={setParticleCounts}
             />
 
-            <div className="pointer-events-none absolute bottom-3 left-3 rounded-lg bg-white/70 px-3 py-2 text-xs shadow-sm ring-1 ring-slate-200">
+            <div className="absolute bottom-3 left-3 rounded-lg bg-white/70 px-3 py-2 text-xs shadow-sm ring-1 ring-slate-200">
               <div className="flex items-center justify-between gap-4">
-                <div className="text-red-500">Red</div>
-                <div className="font-medium tabular-nums text-red-500">{particleCounts.red}</div>
+                <div className="text-red-500">{colorByLocation ? 'Inside' : 'Red'}</div>
+                <div className="font-medium tabular-nums text-red-500">
+                  {colorByLocation ? particleCounts.inside : particleCounts.red}
+                </div>
               </div>
               <div className="mt-1 flex items-center justify-between gap-4">
-                <div className="text-green-500">Green</div>
-                <div className="font-medium tabular-nums text-green-500">{particleCounts.green}</div>
+                <div className="text-green-500">{colorByLocation ? 'Outside' : 'Green'}</div>
+                <div className="font-medium tabular-nums text-green-500">
+                  {colorByLocation ? particleCounts.outside : particleCounts.green}
+                </div>
               </div>
 
               <div className="mt-2 h-px bg-slate-200" />
 
               <div className="mt-2 flex items-center justify-between gap-4">
-                <div className="text-slate-600">Inside total</div>
-                <div className="font-medium tabular-nums text-slate-700">{particleCounts.inside}</div>
+                <div className="text-slate-600">Exited membrane</div>
+                <div className="font-medium tabular-nums text-slate-700">{particleCounts.exited}</div>
               </div>
-              <div className="mt-1 flex items-center justify-between gap-4">
-                <div className="text-slate-600">Outside total</div>
-                <div className="font-medium tabular-nums text-slate-700">{particleCounts.outside}</div>
-              </div>
+
+              <button
+                type="button"
+                className="mt-2 w-full rounded-md bg-white/60 px-2 py-1 text-left text-xs text-slate-700 ring-1 ring-slate-200 hover:bg-white/80"
+                onClick={() => setColorByLocation((v) => !v)}
+              >
+                {colorByLocation ? 'Disable location colours' : 'Enable location colours'}
+              </button>
             </div>
           </div>
         </section>
